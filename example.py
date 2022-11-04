@@ -1,5 +1,5 @@
-import robel
 import gym
+import robel
 
 env = gym.make("DKittyWalkRandom-v0")
 
@@ -9,3 +9,5 @@ for i in range(10):
     while not done:
         env.render()
         obs, reward, done, info = env.step(env.action_space.sample())
+        env.action_space.sample()
+        env.action_space.sample()
