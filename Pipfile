@@ -6,6 +6,9 @@ name = "pypi"
 [packages]
 opencv-python = "*"
 wandb = "*"
+torchvision = "==0.9.2"
+torchaudio = "==0.8.2"
+torch = "==1.8.2"
 
 [dev-packages]
 
