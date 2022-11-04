@@ -1,0 +1,14 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+mujoco-py = "==2.0.2.13"
+gym = "==0.13.1"
+robel = {editable = true, path = "./robel"}
+
+[dev-packages]
+
+[requires]
+python_version = "3.7"
