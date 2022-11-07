@@ -82,3 +82,23 @@ register(
     class_path='robel.dkitty.walk:DKittyWalkRandomDynamics',
     max_episode_steps=_WALK_EPISODE_LEN)
 
+
+for fr in [0,250,500,1000,1500,2000,2500,5000]:
+    register(
+        env_id=f'WalkFR{fr}-v0',
+        class_path='robel.dkitty.walk:DKittyWalkFixed',
+        max_episode_steps=_WALK_EPISODE_LEN,
+        kwargs={
+            "falling_reward": -fr
+        },
+        )
+
+for fric in [1.0, 0.1, 0.01, 0.001]:
+    register(
+        env_id=f'WalkFric{fric}-v0',
+        class_path='robel.dkitty.walk:DKittyWalkFixed',
+        max_episode_steps=_WALK_EPISODE_LEN,
+        kwargs={
+            "friction": fric
+        },
+    )

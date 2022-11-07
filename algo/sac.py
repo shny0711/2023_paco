@@ -16,6 +16,7 @@ import gym
 import matplotlib.pyplot as plt
 from datetime import datetime
 import japanize_matplotlib
+import wandb
 
 from algo.filter import IdentityFilter
 
@@ -169,12 +170,15 @@ class Trainer:
 
 class Algorithm(ABC):
 
-    def explore(self, state):
+    def explore(self, state, only_action=False):
         """ 確率論的な行動と，その行動の確率密度の対数 \log(\pi(a|s)) を返す． """
         state = torch.tensor(state, dtype=torch.float, device=self.device).unsqueeze_(0)
         with torch.no_grad():
             action, log_pi = self.actor.sample(state)
-        return action.cpu().numpy()[0], log_pi.item()
+        if only_action:
+            return action.cpu().numpy()[0]
+        else:
+            return action.cpu().numpy()[0], log_pi.item()
 
     def exploit(self, state):
         """ 決定論的な行動を返す． """
@@ -186,13 +190,6 @@ class Algorithm(ABC):
     @abstractmethod
     def is_update(self, steps):
         """ 現在のトータルのステップ数(steps)を受け取り，アルゴリズムを学習するか否かを返す． """
-        pass
-
-    @abstractmethod
-    def step(self, env, state, t, steps):
-        """ 環境(env)，現在の状態(state)，現在のエピソードのステップ数(t)，今までのトータルのステップ数(steps)を
-            受け取り，リプレイバッファへの保存などの処理を行い，状態・エピソードのステップ数を更新する．
-        """
         pass
 
     @abstractmethod
@@ -382,40 +379,6 @@ class SAC(Algorithm):
         # 学習初期の一定期間(start_steps)は学習しない．
         return steps >= max(self.start_steps, self.batch_size)
 
-    def step(self, env, state, t, steps):
-        t += 1
-
-        # 学習初期の一定期間(start_steps)は，ランダムに行動して多様なデータの収集を促進する．
-        if steps <= self.start_steps:
-            action = env.action_space.sample()
-        else:
-            action, _ = self.explore(state)
-        
-        action = self.filter.apply(action)
-        next_state, reward, done, _ = env.step(action)
-
-        # ゲームオーバーではなく，最大ステップ数に到達したことでエピソードが終了した場合は，
-        # 本来であればその先も試行が継続するはず．よって，終了シグナルをFalseにする．
-        # NOTE: ゲームオーバーによってエピソード終了した場合には， done_masked=True が適切．
-        # しかし，以下の実装では，"たまたま"最大ステップ数でゲームオーバーとなった場合には，
-        # done_masked=False になってしまう．
-        # その場合は稀で，多くの実装ではその誤差を無視しているので，今回も無視する．
-        if t == env._max_episode_steps:
-            done_masked = False
-        else:
-            done_masked = done
-
-        # リプレイバッファにデータを追加する．
-        self.buffer.append(state, action, reward, done_masked, next_state)
-
-        # エピソードが終了した場合には，環境をリセットする．
-        if done:
-            t = 0
-            next_state = env.reset()
-            self.filter.reset()
-
-        return next_state, t
-
     def update(self):
         self.learning_steps += 1
         states, actions, rewards, dones, next_states = self.buffer.sample(self.batch_size)
@@ -440,6 +403,8 @@ class SAC(Algorithm):
         (loss_critic1 + loss_critic2).backward(retain_graph=False)
         self.optim_critic.step()
 
+        wandb.log({"train/critic1": loss_critic1, "train/critic2": loss_critic2})
+
     def update_actor(self, states):
         actions, log_pis = self.actor.sample(states)
         qs1, qs2 = self.critic(states, actions)
@@ -448,6 +413,8 @@ class SAC(Algorithm):
         self.optim_actor.zero_grad()
         loss_actor.backward(retain_graph=False)
         self.optim_actor.step()
+        
+        wandb.log({"train/actor": loss_actor})
 
     def update_target(self):
         for t, s in zip(self.critic_target.parameters(), self.critic.parameters()):

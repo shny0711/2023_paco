@@ -67,9 +67,9 @@ def calculate_cosine(vec1: np.ndarray, vec2: np.ndarray) -> np.ndarray:
         np.linalg.norm(vec1, axis=axis) * np.linalg.norm(vec2, axis=axis))
     zero_norms = norm_product == 0
     if np.any(zero_norms):
-        logging.warning(
-            '%s or %s is all 0s; this may be normal during initialization.',
-            str(vec1), str(vec2))
+        # logging.warning(
+        #     '%s or %s is all 0s; this may be normal during initialization.',
+        #     str(vec1), str(vec2))
         if ndim == 2:
             norm_product[zero_norms] = 1
         else:

@@ -298,3 +298,17 @@ class BaseDKittyUprightEnv(BaseDKittyEnv):
     ) -> np.ndarray:
         """Returns whether the episode should terminate."""
         return obs_dict[self._upright_obs_key] < self._upright_threshold
+
+
+class BaseDKittyFrictionEnv(BaseDKittyUprightEnv):
+    
+    def __init__(self, *args, friction: float = 1.0, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.base_friction = friction
+
+    def _reset(self):
+        super()._reset()
+        self.set_fric(self.base_friction)
+
+    def set_fric(self, fric:float):
+        self.model.pair_friction[:] = fric

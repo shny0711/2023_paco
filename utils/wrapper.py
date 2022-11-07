@@ -2,11 +2,15 @@ import gym
 import numpy as np
 import cv2
 from typing import Iterable
+from gym.core import Env
 
 class RecordEnv(gym.Wrapper):
-    recording = False
-    buffer = []
-    infos = []
+    def __init__(self, env: Env, camera_id=None) -> None:
+        self.recording = False
+        self.buffer = []
+        self.infos = []
+        self.camera_id = camera_id
+        super().__init__(env)
 
     def start(self, path:str) -> None:
         self.recording = True
@@ -14,17 +18,22 @@ class RecordEnv(gym.Wrapper):
     
     def step(self, action):
         if self.recording:
-            rgb = self.env.render(mode='rgb_array', camera_id = 1)
+            if self.camera_id:
+                rgb = self.env.render(mode='rgb_array', camera_id=self.camera_id)
+            else:
+                rgb = self.env.render(mode='rgb_array')
             self.buffer.append(rgb)
         return self.env.step(action)
 
-    def stop(self) -> str:
+    def stop(self):
         self.recording = False
         rbgs_to_video(self.path, self.buffer, infos = self.infos)
         self.buffer = []
 
 class RecordInfoEnv(RecordEnv):
-    info = []
+    def __init__(self, env: Env, **kwargs) -> None:
+        self.info = []
+        super().__init__(env, **kwargs)
 
     def step(self, action):
         self.infos.append(self.info)
@@ -39,14 +48,16 @@ class RecordInfoEnv(RecordEnv):
 BLACK = (0,0,0)
 PADDING = 30
 def rbgs_to_video(path, frames, infos = None):
+    basesize = frames[0].shape[:2]
+
     if infos:
         assert len(frames) == len(infos)
-        note = np.ones((480,480,3)).astype(np.uint8) * 255
+        note = np.ones((*basesize,3)).astype(np.uint8) * 255
         frames = [np.concatenate((f,note),axis=1) for f in frames]
     
     fourcc = cv2.VideoWriter_fourcc(*"vp09")
 
-    size = (960, 480) if infos else (480, 480)
+    size = (basesize[1]*2, basesize[0]) if infos else basesize
     video = cv2.VideoWriter(path, fourcc, 50.0, size)
 
     for i,frame in enumerate(frames):
@@ -58,3 +69,18 @@ def rbgs_to_video(path, frames, infos = None):
 
         video.write(im)
     video.release()
+
+class InfoEnv(gym.Wrapper):
+    def reset(self):
+        self.ret = 0
+        self.t = 0
+        return super().reset()
+
+    def step(self, action):
+        obs, reward, done, info = super().step(action)
+        self.ret += reward
+        self.t += 1
+        info["return"] = self.ret        
+        info["step"] = self.t
+        info["truncated"] = done and self.t >= self.env._max_episode_steps
+        return obs, reward, done, info

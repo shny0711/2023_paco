@@ -3,6 +3,14 @@
     // Hover to view descriptions of existing attributes.
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
+    "inputs": [
+        {
+            "type": "promptString",
+            "id": "prompt",
+            "description": "引数を入力してください。",
+            "default": ""
+        }
+    ],
     "configurations": [
         {
             "name": "Python: Current File",
@@ -11,6 +19,15 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": false
+        },
+        {
+            "name": "dynamic arg",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["${input:prompt}"],  
         }
     ]
 }

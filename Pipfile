@@ -9,6 +9,7 @@ wandb = "*"
 torchvision = "==0.9.2"
 torchaudio = "==0.8.2"
 torch = "==1.8.2"
+joblib = "*"
 
 [dev-packages]
 
