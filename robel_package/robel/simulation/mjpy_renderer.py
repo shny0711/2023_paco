@@ -42,7 +42,10 @@ class MjPyRenderer(Renderer):
         """Refreshes the rendered window if one is present."""
         if self._onscreen_renderer is None:
             return
+          
+        self.set_marker(self._onscreen_renderer)
         self._onscreen_renderer.render()
+        del self._onscreen_renderer._markers[:]
 
     def render_offscreen(self,
                          width: int,
@@ -70,7 +73,10 @@ class MjPyRenderer(Renderer):
         if camera_id == -1:
             self._update_camera_properties(self._offscreen_renderer.cam)
 
+        self.set_marker(self._offscreen_renderer)
         self._offscreen_renderer.render(width, height, camera_id)
+        del self._offscreen_renderer._markers[:]
+
         if mode == RenderMode.RGB:
             data = self._offscreen_renderer.read_pixels(
                 width, height, depth=False)
@@ -83,3 +89,10 @@ class MjPyRenderer(Renderer):
             return data[::-1, :]
         else:
             raise NotImplementedError(mode)
+    
+    def set_marker(self, viewer):
+        for i in range(10):
+            viewer.add_marker(type=105,
+                            pos=[0, i, .2],
+                            label=f"{i}m")
+

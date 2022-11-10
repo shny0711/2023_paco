@@ -224,6 +224,8 @@ class RobotEnv(gym.Env, metaclass=abc.ABCMeta):
         self.last_score_dict = None
         self.is_done = False
         self.step_count = 0
+        
+        self.return_dict = collections.OrderedDict({})
 
         return self._get_obs(obs_dict)
 
@@ -270,6 +272,13 @@ class RobotEnv(gym.Env, metaclass=abc.ABCMeta):
         self.last_reward_dict = reward_dict
         reward = self._get_total_reward(reward_dict)
 
+        for k,v in reward_dict.items():
+            try:
+                self.return_dict[k] += v
+            except KeyError:
+                self.return_dict[k] = v
+
+
         # Calculate the score.
         batched_score_dict = self.get_score_dict(batched_obs_dict,
                                                  batched_reward_dict)
@@ -285,6 +294,7 @@ class RobotEnv(gym.Env, metaclass=abc.ABCMeta):
         info = collections.OrderedDict()
         info.update(('obs/' + key, val) for key, val in obs_dict.items())
         info.update(('reward/' + key, val) for key, val in reward_dict.items())
+        info.update(('return/' + key, val) for key, val in self.return_dict.items())
         info['reward/total'] = reward
         info.update(('score/' + key, val) for key, val in score_dict.items())
 

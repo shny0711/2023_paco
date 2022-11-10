@@ -306,9 +306,10 @@ class BaseDKittyFrictionEnv(BaseDKittyUprightEnv):
         super().__init__(*args, **kwargs)
         self.base_friction = friction
 
-    def _reset(self):
-        super()._reset()
-        self.set_fric(self.base_friction)
+    def step(self, action):
+        obs, reward, done, info = super().step(action)
+        info["base_friction"] = self.base_friction
+        return obs, reward, done, info
 
-    def set_fric(self, fric:float):
+    def _set_fric(self, fric:float):
         self.model.pair_friction[:] = fric

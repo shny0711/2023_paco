@@ -40,4 +40,10 @@
       <include file="./../../robel-scenes/dkitty/assets/chainA_xh-v2.1.xml"/>
     </body>
   </worldbody>
+  <contact>
+    <pair name="fric1" geom1="floor" geom2="FRtip" condim="3" friction="1 1 1 1"/>
+    <pair name="fric2" geom1="floor" geom2="FLtip" condim="3" friction="1 1 1 1"/>
+    <pair name="fric3" geom1="floor" geom2="BRtip" condim="3" friction="1 1 1 1"/>
+    <pair name="fric4" geom1="floor" geom2="BLtip" condim="3" friction="1 1 1 1"/>
+  </contact>
 </mujoco>

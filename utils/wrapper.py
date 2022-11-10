@@ -1,8 +1,9 @@
 import gym
 import numpy as np
 import cv2
-from typing import Iterable
+from typing import Iterable, List
 from gym.core import Env
+from dataclasses import dataclass
 
 class RecordEnv(gym.Wrapper):
     def __init__(self, env: Env, camera_id=None) -> None:

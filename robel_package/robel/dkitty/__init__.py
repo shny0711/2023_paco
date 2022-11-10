@@ -15,6 +15,7 @@
 """Gym environment registration for DKitty environments."""
 
 from robel.utils.registration import register
+from robel.dkitty.marathon import FricInfo
 
 #===============================================================================
 # Stand tasks
@@ -83,22 +84,36 @@ register(
     max_episode_steps=_WALK_EPISODE_LEN)
 
 
-for fr in [0,250,500,1000,1500,2000,2500,5000]:
-    register(
-        env_id=f'WalkFR{fr}-v0',
-        class_path='robel.dkitty.walk:DKittyWalkFixed',
-        max_episode_steps=_WALK_EPISODE_LEN,
-        kwargs={
-            "falling_reward": -fr
-        },
+for name, path in [("Walk", 'robel.dkitty.walk:DKittyWalkFixed'), ("Marathon", "robel.dkitty.marathon:DKittyMarathonFixed")]:
+    for fr in [0,250,500,1000,1500,2000,2500,5000]:
+        register(
+            env_id=f'{name}FR{fr}-v0',
+            class_path=path,
+            max_episode_steps=_WALK_EPISODE_LEN,
+            kwargs={
+                "falling_reward": -fr
+            },
+            )
+
+    for fric in [1.0, 0.1, 0.01, 0.001]:
+        register(
+            env_id=f'{name}Fric{fric}-v0',
+            class_path=path,
+            max_episode_steps=_WALK_EPISODE_LEN,
+            kwargs={
+                "friction": fric,
+            },
         )
 
-for fric in [1.0, 0.1, 0.01, 0.001]:
-    register(
-        env_id=f'WalkFric{fric}-v0',
-        class_path='robel.dkitty.walk:DKittyWalkFixed',
-        max_episode_steps=_WALK_EPISODE_LEN,
-        kwargs={
-            "friction": fric
-        },
+
+register(
+    env_id='MarathonC__H_L-v0',
+    class_path='robel.dkitty.marathon:MarathonChangable',
+    max_episode_steps=_WALK_EPISODE_LEN*2,
+    kwargs={
+        "frics":[
+            FricInfo(-float("inf"), 3, 1.0),
+            FricInfo(3, float("inf"), 0.001)
+        ]
+    }
     )

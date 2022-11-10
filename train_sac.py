@@ -75,23 +75,28 @@ def record(t):
                 args.env,
                 f"t: {t}",
                 str(info["step"]),
-                str(info["return"])
+                str(info["return"]),
+                f"score: {info['obs/root_pos'][1]}",
+            ] + [f"{k} {v:.1f}" for k,v in info.items() if len(k) >= 7 and k[:7] == "return/"] + [
+                f"base friction: {info.get('base_friction', 'None')}",
+                f"changed friction: {info.get('changed_friction', 'None')}",
             ])
     env.stop()
-    wandb.log({"t": t, "record": wandb.Video(videopath, fps=50.0, format="mp4")})
+    wandb.log({"t": t, "score": info["obs/root_pos"][1], "record": wandb.Video(videopath, fps=50.0, format="mp4")})
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--all-step", default=10**6, type=int)
     parser.add_argument("--env", default="DKittyWalkFixed-v0")
-    parser.add_argument("--test-interval", default=10**4, type=int)
+    parser.add_argument("--test-interval", default=10**3, type=int)
     parser.add_argument("--test-num", default=1, type=int)
-    parser.add_argument("--record-interval", default=0, type=int)
+    parser.add_argument("--record-interval", default=10**4, type=int)
     parser.add_argument("--record-num", default=1, type=int)
     parser.add_argument("--device", default="cuda", choices=["cuda", "cpu"])
     parser.add_argument("--alpha", default=0.2, type=float)
     parser.add_argument("--batch-size", default=256, type=int)
     parser.add_argument("--replay-size", default=10**6, type=int)
+    parser.add_argument("--start-step", default=10**3, type=int)
     args = parser.parse_args()
     wandb.init(entity="gyuta", project="paco_sac", config=args)
 
@@ -100,5 +105,5 @@ if __name__ == "__main__":
     env = gym.make(args.env)
     env = InfoEnv(env)
     sac = SAC(env.observation_space.shape, env.action_space.shape, device=args.device, alpha=args.alpha,
-        batch_size=args.batch_size, replay_size=args.replay_size)
+        batch_size=args.batch_size, replay_size=args.replay_size, start_steps=args.start_step)
     train()

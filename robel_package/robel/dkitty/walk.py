@@ -117,6 +117,7 @@ class BaseDKittyWalk(BaseDKittyFrictionEnv, metaclass=abc.ABCMeta):
 
     def _reset(self):
         """Resets the environment."""
+        self._set_fric(self.base_friction)
         self._reset_dkitty_standing()
 
         # If no heading is provided, head towards the target.

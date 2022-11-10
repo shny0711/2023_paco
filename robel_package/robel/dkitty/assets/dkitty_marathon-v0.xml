@@ -17,13 +17,15 @@
 <?xml version="1.0"?>
 <mujoco model="dkitty-v2.1">
   <compiler meshdir="./../../robel-scenes/dkitty" texturedir="../../robel-scenes/dkitty"/>
-  <include file="./../../robel-scenes/scenes/basic_scene.xml"/>
+  <include file="./../../robel-scenes/scenes/corridor_scene.xml"/>
   <include file="./../../robel-scenes/dkitty/assets/dependenciesA_xh-v2.1.xml"/>
   <asset>
     <hfield name="hf1" size="4.5 4.5 1 .1" nrow="120" ncol="120"/>
   </asset>
   <worldbody>
-    <geom name="hfield1" type="hfield" hfield="hf1" pos="0 0 -.005" material="MatPlane" rgba=".7 .7 .7 1"/>
+    <site name="target" pos="0 1 0" type="cylinder" size=".5 .005 0" rgba="0 1 0 0"/>
+    <site name="heading" pos="0 1 0.25" type="cylinder" size=".05 .25 0" rgba="1 1 0 0"/>
+    <geom name="hfield1" type="hfield" hfield="hf1" pos="0 0 -.005" material="MatPlane" rgba=".7 .7 .7 0"/>
     <body name="kitty_frame" pos="0 0 .3">
       <camera name="trackingZ" pos="0 0 3" zaxis="0 0 3" mode="trackcom"/>
       <camera name="trackingY" pos="1.5 1.5 .35" xyaxes="-.7 1 0 0 -.3 1" mode="trackcom"/>
@@ -38,4 +40,10 @@
       <include file="./../../robel-scenes/dkitty/assets/chainA_xh-v2.1.xml"/>
     </body>
   </worldbody>
+  <contact>
+    <pair name="fric1" geom1="floor" geom2="FRtip" condim="3" friction="1 1 1 1"/>
+    <pair name="fric2" geom1="floor" geom2="FLtip" condim="3" friction="1 1 1 1"/>
+    <pair name="fric3" geom1="floor" geom2="BRtip" condim="3" friction="1 1 1 1"/>
+    <pair name="fric4" geom1="floor" geom2="BLtip" condim="3" friction="1 1 1 1"/>
+  </contact>
 </mujoco>

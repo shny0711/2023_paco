@@ -8,10 +8,10 @@ import wandb
 wandb.init(entity="gyuta", project="ada-paco_test")
 videopath = "e.mp4"
 for ep in range(4):
-    env = gym.make("DKittyWalkRandom-v0")
+    env = gym.make("MarathonFric0.001-v0")
     env = InfoEnv(env)
     if ep % 2 == 0:
-        env = RecordInfoEnv(env)
+        env = RecordInfoEnv(env, camera_id=1)
         env.start(videopath)
     env.reset()
     done = False

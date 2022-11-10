@@ -420,3 +420,8 @@ class SAC(Algorithm):
         for t, s in zip(self.critic_target.parameters(), self.critic.parameters()):
             t.data.mul_(1.0 - self.tau)
             t.data.add_(self.tau * s.data)
+    
+    @classmethod
+    def load(cls, path):
+        sac = cls(conf)
+        

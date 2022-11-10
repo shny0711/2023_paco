@@ -66,7 +66,7 @@
           <geom class="collision" pos="-0.02 0 0.026" size="0.0015 0.013 0.029" type="box" mass=".005"/>
           <geom class="collision" pos="0 0 0.052" size="0.019 0.016 0.004" type="box" mass=".008"/>
           <geom class="collision" pos="0 0 0.058" size="0.025 0.014 0.003" type="box" mass=".002"/>
-          <geom class="collision" pos="0 0 0.082" size="0.0103 0.0187" type="capsule" mass=".02"/>
+          <geom name="FRtip" class="collision" pos="0 0 0.082" size="0.0103 0.0187" type="capsule" mass=".02"/>
           <site name="A:FLfoot" group="1" type="sphere" pos="0 0 .101" size="0.0105" rgba="1 1 .3 1"/>
         </body>
       </body>
@@ -100,7 +100,7 @@
           <geom class="collision" pos="-0.02 0 0.026" size="0.0015 0.013 0.029" type="box" mass=".005"/>
           <geom class="collision" pos="0 0 0.052" size="0.019 0.016 0.004" type="box" mass=".008"/>
           <geom class="collision" pos="0 0 0.058" size="0.025 0.014 0.003" type="box" mass=".002"/>
-          <geom class="collision" pos="0 0 0.082" size="0.0103 0.0187" type="capsule" mass=".02"/>
+          <geom name="FLtip" class="collision" pos="0 0 0.082" size="0.0103 0.0187" type="capsule" mass=".02"/>
           <site name="A:FRfoot" group="1" type="sphere" pos="0 0 .101" size="0.0105" rgba=".3 .3 1 1"/>
         </body>
       </body>
@@ -134,7 +134,7 @@
           <geom class="collision" pos="-0.02 0 0.026" size="0.0015 0.013 0.029" type="box" mass=".005"/>
           <geom class="collision" pos="0 0 0.052" size="0.019 0.016 0.004" type="box" mass=".008"/>
           <geom class="collision" pos="0 0 0.058" size="0.025 0.014 0.003" type="box" mass=".002"/>
-          <geom class="collision" pos="0 0 0.082" size="0.0103 0.0187" type="capsule" mass=".02"/>
+          <geom name="BLtip" class="collision" pos="0 0 0.082" size="0.0103 0.0187" type="capsule" mass=".02"/>
           <site name="A:BLfoot" group="1" type="sphere" pos="0 0 .101" size="0.0105" rgba=".3 1 .3 1"/>
         </body>
       </body>
@@ -168,7 +168,7 @@
           <geom class="collision" pos="-0.02 0 0.026" size="0.0015 0.013 0.029" type="box" mass=".005"/>
           <geom class="collision" pos="0 0 0.052" size="0.019 0.016 0.004" type="box" mass=".008"/>
           <geom class="collision" pos="0 0 0.058" size="0.025 0.014 0.003" type="box" mass=".002"/>
-          <geom class="collision" pos="0 0 0.082" size="0.0103 0.0187" type="capsule" mass=".02"/>
+          <geom name="BRtip" class="collision" pos="0 0 0.082" size="0.0103 0.0187" type="capsule" mass=".02"/>
           <site name="A:BRfoot" group="1" type="sphere" pos="0 0 .101" size="0.0105" rgba="1 .3 .3 1"/>
         </body>
       </body>

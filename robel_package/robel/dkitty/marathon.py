@@ -1,17 +1,3 @@
-# Copyright 2019 The ROBEL Authors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 """Marathon tasks with DKitty robots.
 
 This is a single movement from an initial position to a target position.
@@ -29,6 +15,9 @@ from robel.simulation.randomize import SimRandomizer
 from robel.utils.configurable import configurable
 from robel.utils.math_utils import calculate_cosine
 from robel.utils.resources import get_asset_path
+
+from typing import List
+from dataclasses import dataclass
 
 DKITTY_ASSET_PATH = 'robel/dkitty/assets/dkitty_marathon-v0.xml'
 
@@ -57,7 +46,10 @@ class BaseDKittyMarathon(BaseDKittyFrictionEnv, metaclass=abc.ABCMeta):
                  upright_threshold: float = 0.9,
                  upright_reward: float = 1,
                  falling_reward: float = -500,
-                 friction: float = 1.0,
+                 pos_scale: int = 1,
+                 vel_scale: int = 10, 
+                 dev_scale: int = 1,
+                 hea_scale: int = 2,
                  **kwargs):
         """Initializes the environment.
 
@@ -94,7 +86,10 @@ class BaseDKittyMarathon(BaseDKittyFrictionEnv, metaclass=abc.ABCMeta):
 
         self._initial_target_pos = np.zeros(3)
         self._initial_heading_pos = None
-        self._base_fric = friction
+        self.pos_scale = pos_scale
+        self.vel_scale = vel_scale
+        self.dev_scale = dev_scale
+        self.hea_scale = hea_scale
 
     def _configure_tracker(self, builder: TrackerComponentBuilder):
         """Configures the tracker component."""
@@ -110,6 +105,7 @@ class BaseDKittyMarathon(BaseDKittyFrictionEnv, metaclass=abc.ABCMeta):
 
     def _reset(self):
         """Resets the environment."""
+        self._set_fric(self.base_friction)
         self._reset_dkitty_standing()
 
         # If no heading is provided, head towards the target.
@@ -123,8 +119,6 @@ class BaseDKittyMarathon(BaseDKittyFrictionEnv, metaclass=abc.ABCMeta):
             'torso': TrackerState(pos=np.zeros(3), rot=np.identity(3)),
             'heading': TrackerState(pos=heading_pos),
         })
-
-        self.set_fric(self._base_fric)
 
     def _step(self, action: np.ndarray):
         """Applies an action to the robot."""
@@ -179,10 +173,11 @@ class BaseDKittyMarathon(BaseDKittyFrictionEnv, metaclass=abc.ABCMeta):
         reward_dict = collections.OrderedDict((
             # Add reward terms for being upright.
             *self._get_upright_rewards(obs_dict).items(),
-            ('position', )
-            ('velocity', )
+            ('position', self.pos_scale * obs_dict['root_pos'][0][1]),
+            ('velocity', self.vel_scale * obs_dict['root_vel'][0][1]),
+            ('deviate', -self.dev_scale * np.abs(obs_dict['root_pos'][0][0])),
             # Heading - 1 @ cos(0) to 0 @ cos(25deg).
-            ('heading', 2 * (heading - 0.9) / 0.1),
+            ('heading', self.hea_scale * (heading - 0.9) / 0.1),
         ))
         return reward_dict
 
@@ -193,8 +188,7 @@ class BaseDKittyMarathon(BaseDKittyFrictionEnv, metaclass=abc.ABCMeta):
     ) -> Dict[str, np.ndarray]:
         """Returns a standardized measure of success for the environment."""
         return collections.OrderedDict((
-            ('points', -np.linalg.norm(obs_dict['target_error'])),
-            ('success', reward_dict['bonus_big'] > 0.0),
+            ('success', obs_dict['root_pos'][0][1] > 5.0),
         ))
 
 
@@ -204,8 +198,40 @@ class DKittyMarathonFixed(BaseDKittyMarathon):
 
     def _reset(self):
         """Resets the environment."""
+        target_dist = 10.0
+        target_theta = np.pi / 2  # Point towards y-axis
+        self._initial_target_pos = target_dist * np.array([
+            np.cos(target_theta), np.sin(target_theta), 0
+        ])
         super()._reset()
 
+@dataclass
+class FricInfo:
+    left: float
+    right: float
+    fric: float
+    
+    def is_in(self, y:float):
+        return self.left <= y < self.right
+
+class MarathonChangable(DKittyMarathonFixed):
+    def __init__(self, frics: List[FricInfo], **kwargs):
+        self.frics = frics
+        super().__init__(**kwargs)
+
+    def step(self, action):
+        obs, reward, done, info = super().step(action)
+        f = self.get_fric(info["obs/root_pos"][1])
+        self._set_fric(f)
+        info["changed_friction"] = f
+        return obs, reward, done, info
+    
+    def get_fric(self, y):
+        for fi in self.frics:
+            if fi.is_in(y):
+                return fi.fric
+        print("warning: 対応する範囲がありません")
+        return self.frics[-1].fric
 
 @configurable(pickleable=True)
 class DKittyMarathonRandom(BaseDKittyMarathon):
