@@ -117,3 +117,15 @@ register(
         ]
     }
     )
+
+register(
+    env_id='MarathonC__H_ML-v0',
+    class_path='robel.dkitty.marathon:MarathonChangable',
+    max_episode_steps=_WALK_EPISODE_LEN*2,
+    kwargs={
+        "frics":[
+            FricInfo(-float("inf"), 2, 1.0),
+            FricInfo(2, float("inf"), 0.01)
+        ]
+    }
+    )
