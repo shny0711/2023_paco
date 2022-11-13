@@ -373,6 +373,8 @@ class SAC(Algorithm):
         self.alpha = alpha
         self.reward_scale = reward_scale
 
+        self.device = device
+
         self.filter = IdentityFilter()
 
     def is_update(self, steps):
@@ -421,7 +423,51 @@ class SAC(Algorithm):
             t.data.mul_(1.0 - self.tau)
             t.data.add_(self.tau * s.data)
     
+    def pred_score(self, states, actions, next_states):
+        return -1
+    
     @classmethod
     def load(cls, path):
         sac = cls(conf)
-        
+
+class MLPSAC(SAC):
+    def __init__(self, state_shape, action_shape, lr_optim=1e-3, **kwargs):
+        super().__init__(state_shape, action_shape, **kwargs)
+        self.predictor = nn.Sequential(
+            nn.Linear(state_shape[0]+action_shape[0], 256),
+            nn.ReLU(inplace=True),
+            nn.Linear(256, 256),
+            nn.ReLU(inplace=True),
+            nn.Linear(256, 64),
+            nn.ReLU(inplace=True),
+            nn.Linear(64, state_shape[0]),
+        ).to(self.device)
+        self.pred_optim = torch.optim.Adam(self.predictor.parameters(), lr=lr_optim)
+    
+    def update(self):
+        self.learning_steps += 1
+        states, actions, rewards, dones, next_states = self.buffer.sample(self.batch_size)
+
+        self.update_critic(states, actions, rewards, dones, next_states)
+        self.update_actor(states)
+        self.update_target()
+        self.update_predictor(states, actions, next_states)
+    
+    def update_predictor(self, states, actions, next_states):
+        inp = torch.cat((states, actions), dim = 1)
+        out = self.predictor(inp)
+        loss = torch.nn.functional.mse_loss(out, next_states)
+        loss.backward()
+        self.pred_optim.zero_grad()
+        self.pred_optim.step()
+
+        wandb.log({"train/predictor": loss})
+
+    def pred_score(self, states, actions, next_states):
+        states = torch.from_numpy(states).float().to(self.device)
+        actions = torch.from_numpy(actions).float().to(self.device)
+        next_states = torch.from_numpy(next_states).float().to(self.device)
+        inp = torch.cat((states, actions), dim = 0)
+        out = self.predictor(inp)
+        loss = torch.nn.functional.mse_loss(out, next_states)
+        return loss.item()

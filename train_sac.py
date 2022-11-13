@@ -4,10 +4,11 @@ import gym
 import robel
 import wandb
 import numpy as np
-from algo.sac import SAC
+from algo.sac import SAC, MLPSAC
 from utils.wrapper import RecordInfoEnv, InfoEnv
 from utils.func import nowstr
 from tqdm import tqdm
+import itertools
 
 def train():
     best_ret = -float("inf")
@@ -42,20 +43,25 @@ def train():
 def test(t):
     env = gym.make(args.env)
     env = InfoEnv(env)
-    rets = []
+    returns = []
     steps = []
+    pred_scores = []
     for i in range(args.test_num):
         done = False
         obs = env.reset()
+        pred_score = 0
         while not done:
             act = sac.exploit(obs)
-            obs, reward, done, info = env.step(act)
-        rets.append(info["return"])
+            nobs, reward, done, info = env.step(act)
+            pred_score += sac.pred_score(obs, act, nobs)
+            obs = nobs
+        returns.append(info["return"])
         steps.append(info["step"])
-    ret, std = np.mean(rets), np.std(rets)
-    step, step_std = np.mean(steps), np.std(steps)
-    wandb.log({"t":t, "test/return-mean": ret, "test/return-std": std, "test/step-mean": step, "test/step-std": step_std})
-    return ret
+        pred_scores.append(pred_score)
+    d = {f"test/{target[0]}-{method[0]}": method[1](target[1]) for target, method in itertools.product([("returns", returns), ("steps", steps), ("pred_scores", pred_scores)], [("mean", np.mean), ("std", np.std)])}
+    d.update({"t":t})
+    wandb.log(d)
+    return np.mean(returns)
 
 def record(t):
     env = gym.make(args.env)
@@ -68,7 +74,8 @@ def record(t):
         done = False
         while not done:
             act = sac.exploit(obs)
-            obs, reward, done, info = env.step(act)
+            n_obs, reward, done, info = env.step(act)
+            pred_score = sac.pred_score(obs, act, n_obs)
             env.write([
                 nowstr(),
                 __file__,
@@ -77,15 +84,18 @@ def record(t):
                 str(info["step"]),
                 str(info["return"]),
                 f"score: {info['obs/root_pos'][1]}",
+                f"pred score: {pred_score}"
             ] + [f"{k} {v:.1f}" for k,v in info.items() if len(k) >= 7 and k[:7] == "return/"] + [
                 f"base friction: {info.get('base_friction', 'None')}",
                 f"changed friction: {info.get('changed_friction', 'None')}",
             ])
+            obs = n_obs
     env.stop()
     wandb.log({"t": t, "score": info["obs/root_pos"][1], "record": wandb.Video(videopath, fps=50.0, format="mp4")})
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--cls", default="SAC", choices=["SAC", "MLPSAC"])
     parser.add_argument("--all-step", default=10**6, type=int)
     parser.add_argument("--env", default="DKittyWalkFixed-v0")
     parser.add_argument("--test-interval", default=10**3, type=int)
@@ -104,6 +114,7 @@ if __name__ == "__main__":
 
     env = gym.make(args.env)
     env = InfoEnv(env)
-    sac = SAC(env.observation_space.shape, env.action_space.shape, device=args.device, alpha=args.alpha,
+    cls = eval(args.cls)
+    sac = cls(env.observation_space.shape, env.action_space.shape, device=args.device, alpha=args.alpha,
         batch_size=args.batch_size, replay_size=args.replay_size, start_steps=args.start_step)
     train()
