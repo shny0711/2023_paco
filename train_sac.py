@@ -6,7 +6,7 @@ import wandb
 import numpy as np
 from algo.sac import SAC, MLPSAC
 from utils.wrapper import RecordInfoEnv, InfoEnv
-from utils.func import nowstr
+from utils.func import nowstr, get_strdate
 from tqdm import tqdm
 import itertools
 
@@ -34,6 +34,7 @@ def train():
                 ret = test(t)
                 
                 if best_ret < ret:
+                    sac.save(savepath, {"best_return": best_ret, "t": t})
                     best_ret = ret
                     record(t)
             
@@ -111,6 +112,8 @@ if __name__ == "__main__":
     wandb.init(entity="gyuta", project="paco_sac", config=args)
 
     camera_id = None if args.env in ["Pendulum-v0"] else 1
+    date = get_strdate()
+    savepath = f"data/{args.env}/{args.cls}/{date}"
 
     env = gym.make(args.env)
     env = InfoEnv(env)

@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import japanize_matplotlib
 import wandb
+from utils.func import write_dict, load_dict
 
 from algo.filter import IdentityFilter
 
@@ -377,6 +378,20 @@ class SAC(Algorithm):
 
         self.filter = IdentityFilter()
 
+        self.config = {
+            "state_shape": state_shape,
+            "action_shape": action_shape,
+            "batch_size": batch_size,
+            "gamma": gamma,
+            "lr_actor": lr_actor,
+            "lr_critic": lr_critic,
+            "replay_size": replay_size,
+            "start_steps": start_steps,
+            "tau": tau,
+            "alpha": alpha,
+            "reward_scale": reward_scale
+        }
+
     def is_update(self, steps):
         # 学習初期の一定期間(start_steps)は学習しない．
         return steps >= max(self.start_steps, self.batch_size)
@@ -426,9 +441,25 @@ class SAC(Algorithm):
     def pred_score(self, states, actions, next_states):
         return -1
     
+    def save(self, path, info={}):
+        os.makedirs(path, exist_ok=True)
+        write_dict(f"{path}/info.yml", info)
+        write_dict(f"{path}/config.yml", self.config)
+        torch.save(self.critic.state_dict(), f"{path}/critic.pth")
+        torch.save(self.critic_target.state_dict(), f"{path}/critic_target.pth")
+        torch.save(self.actor.state_dict(), f"{path}/actor.pth")
+
     @classmethod
     def load(cls, path):
-        sac = cls(conf)
+        config = load_dict(f"{path}/config.yml")
+        state_shape = config.pop("state_shape")
+        action_shape = config.pop("action_shape")
+        sac = cls(state_shape, action_shape, **config)
+        sac.critic.load_state_dict(torch.load(f"{path}/critic.pth"))
+        sac.critic_target.load_state_dict(torch.load(f"{path}/critic_target.pth"))
+        sac.actor.load_state_dict(torch.load(f"{path}/actor.pth"))
+
+        return sac
 
 class MLPSAC(SAC):
     def __init__(self, state_shape, action_shape, lr_optim=1e-3, **kwargs):
@@ -471,3 +502,14 @@ class MLPSAC(SAC):
         out = self.predictor(inp)
         loss = torch.nn.functional.mse_loss(out, next_states)
         return loss.item()
+        
+    def save(self, path, info={}):
+        super().save(path, info)
+        torch.save(self.predictor.state_dict(), f"{path}/predictor.pth")
+
+    @classmethod
+    def load(cls, path):
+        sac = super().load(path)
+        sac.predictor.load_state_dict(torch.load(f"{path}/predictor.pth"))
+
+        return sac
