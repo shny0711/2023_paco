@@ -18,6 +18,7 @@ from datetime import datetime
 import japanize_matplotlib
 import wandb
 from utils.func import write_dict, load_dict
+from collections import OrderedDict
 
 from algo.filter import IdentityFilter
 
@@ -488,8 +489,8 @@ class MLPSAC(SAC):
         inp = torch.cat((states, actions), dim = 1)
         out = self.predictor(inp)
         loss = torch.nn.functional.mse_loss(out, next_states)
-        loss.backward()
         self.pred_optim.zero_grad()
+        loss.backward()
         self.pred_optim.step()
 
         wandb.log({"train/predictor": loss})
@@ -513,3 +514,46 @@ class MLPSAC(SAC):
         sac.predictor.load_state_dict(torch.load(f"{path}/predictor.pth"))
 
         return sac
+
+class SACS:
+    """ MLPの予測誤差が最も低いSACを利用するやつ
+    """
+    def __init__(self, sacs, alpha=0.8, names=None, device=torch.device('cuda')):
+        self.sacs = sacs
+        self.scores = [0 for _ in sacs]
+        self.alpha = alpha
+        self.device = device
+
+        if not names:
+            self.names = [str(i) for i in range(len(sacs))]
+        self.names = names
+    
+        self.history = OrderedDict([(name,[]) for name in names])
+
+    def exploit(self, states):
+        return self.best.exploit(states)
+
+    @property
+    def best(self):
+        return self.sacs[self.scores.index(min(self.scores))]
+
+    def update(self, states, actions, next_states):
+        states = torch.from_numpy(states).float().to(self.device)
+        actions = torch.from_numpy(actions).float().to(self.device)
+        inp = torch.cat((states, actions), dim = 0)
+        outs = [sac.predictor(inp).cpu().detach().numpy() for sac in self.sacs]
+        
+        def mse(A,B):
+            return ((A - B)**2).mean()
+        
+        def moving_ave(o, n):
+            return self.alpha*o + (1-self.alpha)*n
+
+        self.scores = [moving_ave(score, mse(out, next_states)) for score, out in zip(self.scores, outs)]
+        for h, score in zip(self.history.values(), self.scores):
+            h.append(score)
+
+    @classmethod
+    def load(cls, pathes):
+        sacs = [MLPSAC.load(path) for path in pathes]
+        return cls(sacs, names = pathes)

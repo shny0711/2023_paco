@@ -13,7 +13,7 @@ import itertools
 def train():
     best_ret = -float("inf")
     obs = env.reset()
-    with tqdm(range(args.all_step)) as pbar:
+    with tqdm(range(args.all_step+1)) as pbar:
         for t in pbar:
             act = sac.explore(obs, only_action=True) if t > sac.start_steps else env.action_space.sample()
             n_obs, reward, done, info = env.step(act)
@@ -34,12 +34,15 @@ def train():
                 ret = test(t)
                 
                 if best_ret < ret:
-                    sac.save(savepath, {"best_return": best_ret, "t": t})
+                    sac.save(f"{savepath}/best", {"best_return": best_ret, "t": t})
                     best_ret = ret
                     record(t)
             
             if args.record_interval > 0 and t % args.record_interval == 0:
                 record(t)
+            
+            if args.save_num > 0 and t % (args.all_step // args.save_num) == 0:
+                sac.save(f"{savepath}/{t}", {"best_return": best_ret, "t": t})
 
 def test(t):
     env = gym.make(args.env)
@@ -103,6 +106,7 @@ if __name__ == "__main__":
     parser.add_argument("--test-num", default=1, type=int)
     parser.add_argument("--record-interval", default=10**4, type=int)
     parser.add_argument("--record-num", default=1, type=int)
+    parser.add_argument("--save-num", default=-1, type=int)
     parser.add_argument("--device", default="cuda", choices=["cuda", "cpu"])
     parser.add_argument("--alpha", default=0.2, type=float)
     parser.add_argument("--batch-size", default=256, type=int)

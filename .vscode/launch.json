@@ -28,6 +28,20 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": ["${input:prompt}"],  
+        },
+        {
+            "name": "mlpsacs",
+            "type": "python",
+            "request": "launch",
+            "program": "enjoy_mlpsacs.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--env=MarathonC__H_ML-v0",
+                "--path",
+                "data/MarathonFric1.0-v0/MLPSAC/20221115_122230",
+                "data/MarathonFric0.01-v0/MLPSAC/20221114_113841"
+            ],  
         }
     ]
 }
