@@ -46,7 +46,8 @@ class BaseDKittyFollow(BaseDKittyFrictionEnv, metaclass=abc.ABCMeta):
                  upright_threshold: float = 0.9,
                  upright_reward: float = 1,
                  falling_reward: float = -500,
-                 follow_scale: int = -1,
+                 follow_scale: int = -10,
+                 desired_vel: float = 1.0,
                  **kwargs):
         """Initializes the environment.
 
@@ -84,7 +85,7 @@ class BaseDKittyFollow(BaseDKittyFrictionEnv, metaclass=abc.ABCMeta):
         self._initial_target_pos = np.zeros(3)
         self._initial_heading_pos = None
         self.follow_scale = follow_scale
-        self.desired_vel = np.array([0,0.2])
+        self.desired_vel = np.array([0, desired_vel, 0])
 
     def _configure_tracker(self, builder: TrackerComponentBuilder):
         """Configures the tracker component."""
@@ -118,6 +119,7 @@ class BaseDKittyFollow(BaseDKittyFrictionEnv, metaclass=abc.ABCMeta):
     def _step(self, action: np.ndarray):
         """Applies an action to the robot."""
         # Apply action.
+        self.sim_scene.renderer.desired_vel = self.desired_vel
         self.robot.step({
             'dkitty': action,
         })
@@ -163,7 +165,7 @@ class BaseDKittyFollow(BaseDKittyFrictionEnv, metaclass=abc.ABCMeta):
             obs_dict: Dict[str, np.ndarray],
     ) -> Dict[str, np.ndarray]:
         """Returns the reward for the given action and observation."""
-        follow_reward = np.linalg.norm(self.desired_vel, obs_dict['root_vel'][:2])
+        follow_reward = np.linalg.norm(self.desired_vel[2] - obs_dict['root_vel'][0][2])
 
         reward_dict = collections.OrderedDict((
             # Add reward terms for being upright.

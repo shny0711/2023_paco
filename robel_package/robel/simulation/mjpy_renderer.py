@@ -16,9 +16,9 @@
 
 import mujoco_py
 import numpy as np
-
+from mujoco_py.generated import const
 from robel.simulation.renderer import Renderer, RenderMode
-
+from transforms3d.euler import euler2mat
 
 class MjPyRenderer(Renderer):
     """Class for rendering mujoco_py simulations."""
@@ -95,4 +95,19 @@ class MjPyRenderer(Renderer):
             viewer.add_marker(type=105,
                             pos=[0, i, .2],
                             label=f"{i}m")
-
+        
+        pos = self._sim.data.qpos[:3]
+        def add_arrow(vel, height, color, label):
+            x,y,z = vel
+            size = np.array((0.02, 0.02, np.linalg.norm(vel)*1.0))
+            viewer.add_marker(type=const.GEOM_ARROW,
+                    pos=[pos[0], pos[1], height],
+                    label=label,
+                    mat=euler2mat(np.arctan2(y,x)+np.pi, np.arctan2(y,np.sqrt(x**2+y**2)), 0),
+                    size=size,
+                    rgba=color,
+                    emission=1)
+        
+        add_arrow(self._sim.data.qvel[:3], 0.5, (0, 1, 0, 0.8), "torso velocity")
+        if hasattr(self, "desired_vel"):
+            add_arrow(getattr(self, "desired_vel"), 0.75, (1, 0, 0, 0.8), "desired velocity")

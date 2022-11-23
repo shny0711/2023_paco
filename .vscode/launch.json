@@ -42,6 +42,20 @@
                 "data/MarathonFric1.0-v0/MLPSAC/20221115_122230",
                 "data/MarathonFric0.01-v0/MLPSAC/20221114_113841"
             ],  
+        },
+        {
+            "name": "mixsacs",
+            "type": "python",
+            "request": "launch",
+            "program": "enjoy_mixsacs.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--env=MarathonC__H_ML-v0",
+                "--path",
+                "data/MarathonFric1.0-v0/MLPSAC/20221120_121400/best",
+                "data/MarathonFric0.01-v0/MLPSAC/20221118_175041/best"
+            ],  
         }
     ]
 }

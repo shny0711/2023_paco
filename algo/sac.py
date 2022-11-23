@@ -554,6 +554,6 @@ class SACS:
             h.append(score)
 
     @classmethod
-    def load(cls, pathes):
+    def load(cls, pathes, **kwargs):
         sacs = [MLPSAC.load(path) for path in pathes]
-        return cls(sacs, names = pathes)
+        return cls(sacs, names = pathes, **kwargs)

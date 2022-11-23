@@ -84,7 +84,11 @@ register(
     max_episode_steps=_WALK_EPISODE_LEN)
 
 
-for name, path in [("Walk", 'robel.dkitty.walk:DKittyWalkFixed'), ("Marathon", "robel.dkitty.marathon:DKittyMarathonFixed")]:
+for name, path in [
+        ("Walk", 'robel.dkitty.walk:DKittyWalkFixed'),
+        ("Marathon", "robel.dkitty.marathon:DKittyMarathonFixed"),
+        ("Follow", "robel.dkitty.follow:DKittyFollowFixed"),
+    ]:
     for fr in [0,250,500,1000,1500,2000,2500,5000]:
         register(
             env_id=f'{name}FR{fr}-v0',

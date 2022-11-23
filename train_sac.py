@@ -34,15 +34,15 @@ def train():
                 ret = test(t)
                 
                 if best_ret < ret:
-                    sac.save(f"{savepath}/best", {"best_return": best_ret, "t": t})
                     best_ret = ret
+                    sac.save(f"{savepath}/best", {"return": float(best_ret), "t": t})
                     record(t)
             
             if args.record_interval > 0 and t % args.record_interval == 0:
                 record(t)
             
             if args.save_num > 0 and t % (args.all_step // args.save_num) == 0:
-                sac.save(f"{savepath}/{t}", {"best_return": best_ret, "t": t})
+                sac.save(f"{savepath}/{t}", {"return": float(ret), "t": t})
 
 def test(t):
     env = gym.make(args.env)

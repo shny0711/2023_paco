@@ -313,3 +313,7 @@ class BaseDKittyFrictionEnv(BaseDKittyUprightEnv):
 
     def _set_fric(self, fric:float):
         self.model.pair_friction[:] = fric
+
+        b = -np.log10(fric) / 3 * 100 + 100
+        rgba = np.array([100,100,b,255]) / 255
+        self.sim_scene.model.geom_rgba[0] = rgba

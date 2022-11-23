@@ -15,23 +15,35 @@ cls_dict = {
 }
 
 class MixSAC:
+    module_names = ["critic", "critic_target", "actor"]
     def __init__(self, main, sacs, ws=[1,0]):
         self.main = main
         self.sacs = sacs
-        self.change_weight(self, ws)
+        self.change_weight(ws)
     
-    @staticmethod
-    def load(cls, pathes):
-        return cls(instant_algo(pathes[0]), SACS.load(pathes))
+    @classmethod
+    def load(cls, pathes, **kwargs):
+        return cls(instant_algo(pathes[0]), SACS.load(pathes), **kwargs)
     
-    def change_weight(self, ws):
-        dic = {}
-        for w, sac in zip(ws, self.sacs.sacs):
-            for k,v in sac.state_dict.items():
-                if k not in dic:
-                    dic[k] = 0
-                dic[k] += w*v
-        self.main.load(dic)
+    def get_params(self):
+        try:
+            return self.params
+        except:
+            self.params = {m: [getattr(sac, m).state_dict() for sac in self.sacs.sacs] for m in self.module_names}
+            return self.params
+    
+    def change_weight(self, ws, target_module = ["actor"]):
+        self.ws = ws
+        for module_name, state_dicts in self.get_params().items():
+            if module_name not in target_module:
+                break
+            new_state_dict = {}
+            for w, state_dict in zip(ws, state_dicts):
+                for k,v in state_dict.items():
+                    if k not in new_state_dict:
+                        new_state_dict[k] = 0
+                    new_state_dict[k] += w*v
+            getattr(self.main, module_name).load_state_dict(new_state_dict)
     
     def update(self, state, action, next_state):
         self.sacs.update(state, action, next_state)
