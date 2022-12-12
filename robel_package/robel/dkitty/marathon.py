@@ -243,7 +243,7 @@ class DKittyMarathonRandom(BaseDKittyMarathon):
 
 
 @configurable(pickleable=True)
-class DKittyMarathonRandomDynamics(DKittyMarathonRandom):
+class DKittyMarathonRandomDynamics(DKittyMarathonFixed):
     """Marathon straight towards a random location."""
 
     def __init__(self,

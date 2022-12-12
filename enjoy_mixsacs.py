@@ -18,7 +18,8 @@ def main():
         while not done:
             act = mixsacs.main.exploit(obs)
             n_obs, reward, done, info = env.step(act)
-            # mixsacs.update(obs, act, n_obs)
+            mixsacs.update(obs, act, n_obs)
+            print(mixsacs.ws)
             obs = n_obs
 
             rgb = env.render(mode='rgb_array', camera_id=1)
@@ -52,7 +53,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     wandb.init(entity='gyuta', project='paco_mixsacs', config=args)
 
-    mixsacs = MixSAC.load(args.path,  ws=[0.5, 0.5])
+    mixsacs = MixSAC.load(args.path,  ws=[0.5, 0.5], sacs_kwarg={"alpha": 0})
     
     env = gym.make(args.env)
     main()

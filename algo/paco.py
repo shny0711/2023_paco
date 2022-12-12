@@ -22,8 +22,8 @@ class MixSAC:
         self.change_weight(ws)
     
     @classmethod
-    def load(cls, pathes, **kwargs):
-        return cls(instant_algo(pathes[0]), SACS.load(pathes), **kwargs)
+    def load(cls, pathes, sacs_kwarg = {}, **kwargs):
+        return cls(instant_algo(pathes[0]), SACS.load(pathes, **sacs_kwarg), **kwargs)
     
     def get_params(self):
         try:
@@ -36,7 +36,7 @@ class MixSAC:
         self.ws = ws
         for module_name, state_dicts in self.get_params().items():
             if module_name not in target_module:
-                break
+                continue
             new_state_dict = {}
             for w, state_dict in zip(ws, state_dicts):
                 for k,v in state_dict.items():
@@ -47,8 +47,48 @@ class MixSAC:
     
     def update(self, state, action, next_state):
         self.sacs.update(state, action, next_state)
-        ws = self.sacs.scores / (self.sacs.scores.sum() + 1e-6)
+        ws = self.sacs.scores / (sum(self.sacs.scores) + 1e-6)
         self.change_weight(ws)
+
+class PACO:
+    class BASE(MLPSAC):
+        """ 基底となる部分で実際にSACのパラメータを持っている
+
+        SACのAPIのうちパラメータをアップデートする箇所が必要
+        """
+        def update(self, states, actions, rewards, dones, next_states):
+            """ 各タスク固有のリプレイバッファから取ったデータを使って学習
+            """
+            self.update_critic(states, actions, rewards, dones, next_states)
+            self.update_actor(states)
+            self.update_target()
+            self.update_predictor(states, actions, next_states)
+    
+    class AGENT:
+        """ BASEの線形和でタスク特化の専門エージェントになる
+
+        SACのAPIのうち環境とインタラクトする箇所が必要
+        """
+        def __init__(self, base_num):
+            self.ws = torch.nn.Linear(1, base_num, bias=False)
+            self.optimizer = torch.optim.Adam(self.ws)
+        
+        def explore(self):
+            pass
+
+        def update_weight(self, states, actions, rewards, dones, next_states):
+            pass
+
+    def __init__(self, K, obs_shape, act_shape, T):
+        """
+        K 基底の数
+        T タスクの数
+        """
+        
+        self.base_agents = [PACO.BASE(obs_shape, act_shape) for k in range(K)]
+
+    def update_base(self, loss):
+        pass
 
 cls_dict = {
     "MLPSAC": MLPSAC,
