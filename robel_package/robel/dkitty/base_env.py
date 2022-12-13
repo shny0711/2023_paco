@@ -309,9 +309,11 @@ class BaseDKittyFrictionEnv(BaseDKittyUprightEnv):
     def step(self, action):
         obs, reward, done, info = super().step(action)
         info["base_friction"] = self.base_friction
+        info["now_friction"] = self.now_fric
         return obs, reward, done, info
 
     def _set_fric(self, fric:float):
+        self.now_fric = fric
         self.model.pair_friction[:] = fric
 
         b = -np.log10(fric) / 3 * 100 + 100

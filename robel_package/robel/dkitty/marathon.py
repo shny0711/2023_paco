@@ -233,6 +233,25 @@ class MarathonChangable(DKittyMarathonFixed):
         print("warning: 対応する範囲がありません")
         return self.frics[-1].fric
 
+class MarathonSampleFriction(DKittyMarathonFixed):
+    def __init__(self, high_fric: float, low_fric: float, **kwargs):
+        self.high_fric = high_fric
+        self.low_fric = low_fric
+        super().__init__(**kwargs)
+    
+    def reset(self):
+        obs = super().reset()
+        f = np.random.uniform(self.low_fric, self.high_fric)
+        self._set_fric(f)
+        return obs
+
+class MarathonLogSampleFriction(MarathonSampleFriction):
+    def reset(self):
+        obs = super().reset()
+        lf = np.random.uniform(self.low_fric, self.high_fric)
+        self._set_fric(10**lf)
+        return obs
+
 @configurable(pickleable=True)
 class DKittyMarathonRandom(BaseDKittyMarathon):
     """Marathon straight towards a random location."""

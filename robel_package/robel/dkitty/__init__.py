@@ -109,6 +109,15 @@ for name, path in [
             },
         )
 
+register(
+    env_id='MarathonU__H_ML-v1',
+    class_path='robel.dkitty.marathon:MarathonLogSampleFriction',
+    max_episode_steps=_WALK_EPISODE_LEN,
+    kwargs={
+        "high_fric": 0,
+        "low_fric": -2,
+    }
+    )
 
 register(
     env_id='MarathonC__H_L-v0',
