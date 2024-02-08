@@ -279,7 +279,7 @@ class PlayShell(cmd.Cmd):
 
     def _display_image_obs(self, obs):
         """Displays the given observation in a window."""
-        if not isinstance(obs, collections.Mapping):
+        if not isinstance(obs, collections.abc.Mapping):
             return
         if self._cv2_module is None:
             try:

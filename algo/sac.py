@@ -324,15 +324,15 @@ class ReplayBuffer:
 
 class SAC(Algorithm):
 
-    def __init__(self, state_shape, action_shape, device=torch.device('cuda'), seed=0,
+    def __init__(self, state_shape, action_shape, device=torch.device('cpu'), seed=0,
                  batch_size=256, gamma=0.99, lr_actor=3e-4, lr_critic=3e-4,
                  replay_size=10**6, start_steps=10**4, tau=5e-3, alpha=0.2, reward_scale=1.0):
         super().__init__()
 
         # シードを設定する．
-        np.random.seed(seed)
-        torch.manual_seed(seed)
-        torch.cuda.manual_seed(seed)
+        # np.random.seed(seed)
+        # torch.manual_seed(seed)
+        # torch.cuda.manual_seed(seed)
 
         # リプレイバッファ．
         self.buffer = ReplayBuffer(
@@ -453,6 +453,7 @@ class SAC(Algorithm):
     @classmethod
     def load(cls, path):
         config = load_dict(f"{path}/config.yml")
+        #config = load_dict("data/MarathonFric1.0-v0/MLPSAC/20231130_165623/best/config.yml")
         state_shape = config.pop("state_shape")
         action_shape = config.pop("action_shape")
         sac = cls(state_shape, action_shape, **config)
@@ -514,11 +515,57 @@ class MLPSAC(SAC):
         sac.predictor.load_state_dict(torch.load(f"{path}/predictor.pth"))
 
         return sac
+    
+
+class HL_SAC(SAC):
+    def __init__(self, state_shape, action_shape, **kwargs):
+        super().__init__(state_shape, action_shape, **kwargs)
+
+    def get_lowaction(self, state, sacs, high_action):
+        low_actions = [sac.exploit(state) for sac in sacs]
+        low_action = (1+high_action) * low_actions[0]/2 +(1-high_action)*low_actions[1]/2
+        return low_action
+
+class MHL_SAC(SAC):
+    def __init__(self, state_shape, action_shape, **kwargs):
+        super().__init__(state_shape, action_shape, **kwargs)
+
+    def get_lowaction(self, state, sacs, high_action):
+        hact_array = np.array(high_action)
+        low_actions = [np.array(sac.exploit(state)) for sac in sacs]
+
+        low_action = (1+hact_array)*low_actions[0]/2 + (1-hact_array)*low_actions[1]/2
+        return low_action
+
+class MHL_SAC_T(SAC):
+    def __init__(self, state_shape, action_shape, **kwargs):
+        super().__init__(state_shape, action_shape, **kwargs)
+
+    def get_lowaction(self, state, sacs, high_action):
+        h = np.array(high_action)
+        hact_array = np.concatenate([h,h,h,h],0)
+        low_actions = [np.array(sac.exploit(state)) for sac in sacs]
+
+        low_action = (1+hact_array)*low_actions[0]/2 + (1-hact_array)*low_actions[1]/2
+        return low_action
+
+class MHL_SAC_F(SAC):
+    def __init__(self, state_shape, action_shape, **kwargs):
+        super().__init__(state_shape, action_shape, **kwargs)
+
+    def get_lowaction(self, state, sacs, high_action):
+        h = np.array(high_action)
+        hact_array = np.array([h[0],h[0],h[0], h[1],h[1],h[1], h[2],h[2],h[2], h[3],h[3],h[3]])
+        low_actions = [np.array(sac.exploit(state)) for sac in sacs]
+
+        low_action = (1+hact_array)*low_actions[0]/2 + (1-hact_array)*low_actions[1]/2
+        return low_action
+
 
 class SACS:
     """ MLPの予測誤差が最も低いSACを利用するやつ
     """
-    def __init__(self, sacs, alpha=0.8, names=None, device=torch.device('cuda')):
+    def __init__(self, sacs, alpha=0.8, names=None, device=torch.device('cpu')):
         self.sacs = sacs
         self.scores = [0 for _ in sacs]
         self.alpha = alpha
@@ -536,6 +583,298 @@ class SACS:
     @property
     def best(self):
         return self.sacs[self.scores.index(min(self.scores))]
+    #[0,1]を選択している部分？
+
+    def update(self, states, actions, next_states):
+        states = torch.from_numpy(states).float().to(self.device)
+        actions = torch.from_numpy(actions).float().to(self.device)
+        inp = torch.cat((states, actions), dim = 0)
+        outs = [sac.predictor(inp).cpu().detach().numpy() for sac in self.sacs]
+        
+        def mse(A,B):
+            return ((A - B)**2).mean()
+        
+        def moving_ave(o, n):
+            return self.alpha*o + (1-self.alpha)*n
+
+        self.scores = [moving_ave(score, mse(out, next_states)) for score, out in zip(self.scores, outs)]
+        for h, score in zip(self.history.values(), self.scores):
+            h.append(score)
+
+    @classmethod
+    def load(cls, pathes, **kwargs):
+        sacs = [MLPSAC.load(path) for path in pathes]
+        return cls(sacs, names = pathes, **kwargs)
+    
+
+
+
+
+class MOESACS:
+    """
+    MLPの予測誤差を重み付けして行動を合成
+    たぶんupdateはそのままでいい
+    bestで選択しているから、そこをいじる？    
+    
+    """
+    def __init__(self, sacs, alpha=0.8, names=None, device=torch.device('cpu')):
+        self.sacs = sacs
+        self.scores = [0 for _ in sacs]
+        self.alpha = alpha
+        self.device = device
+
+        if not names:
+            self.names = [str(i) for i in range(len(sacs))]
+        self.names = names
+    
+        self.history = OrderedDict([(name,[]) for name in names])
+        self.w_history = OrderedDict([(name,[]) for name in names])
+
+    """def exploit(self, states):
+        return self.best.exploit(states)
+
+    @property
+    def best(self):
+        return self.sacs[self.scores.index(min(self.scores))]
+        """
+    #[0,1]を選択している部分？
+
+    """
+    #SACSを取り出す
+    @property
+    def pickup_sac(self):
+        self.sorted_sacs = sorted(self.sacs, key=min(self.scores))
+        return self.sorted_sacs
+    """
+
+
+    #簡単化して、多数のpathが指定されても問題がないmix
+    def newmix(self, states):
+        #逆数を取る際に、分母に加える定数
+        dig1 = 1
+        dig2 = 0.1
+        dig3 = 0.01
+        dig4 = 0.001
+        dig5 = 0.0001
+        dig=0.00000001
+        dig = 10**(-15)
+
+        #逆数をとる、総和を取る
+        inver = [1/(dig + score) for score in self.scores]
+        sum_wei = sum(inver)
+
+        #重みを作る
+        wei = [inv/sum_wei for inv in inver]
+
+        exploits = [s.exploit(states) for s in self.sacs]
+
+        np_wei = np.array(wei)
+        np_exploits = np.array(exploits)
+
+        for h, w in zip(self.w_history.values(), wei):
+            h.append(w)
+
+
+        return np.dot(np_wei, np_exploits)
+    
+
+    @property
+    def e1(self):
+        return self.sacs[self.scores.index(min(self.scores))]
+    #予測誤差の小さい方のSAC
+    
+    @property
+    def e2(self):
+        return self.sacs[self.scores.index(max(self.scores))]
+    #予測誤差が大きい方のSAC
+    
+    def mix(self, states):
+        er1 = min(self.scores)
+        er2 = max(self.scores)
+        #予測誤差
+
+        w1 = 1/(0.001+er1)
+        w2 = 1/(0.001+er2)
+        #逆数
+
+        wei1 = w1/(w1 + w2)
+        wei2 = w2/(w1 + w2)
+        #重みの計算
+
+        exploit1 = self.e1.exploit(states)
+        exploit2 = self.e2.exploit(states)
+        #予測誤差によるそれぞれの行動
+
+        return wei1*exploit1 + wei2*exploit2
+        #行動を合成
+
+
+
+    def update(self, states, actions, next_states):
+        states = torch.from_numpy(states).float().to(self.device)
+        actions = torch.from_numpy(actions).float().to(self.device)
+        inp = torch.cat((states, actions), dim = 0)
+        outs = [sac.predictor(inp).cpu().detach().numpy() for sac in self.sacs]
+        
+        def mse(A,B):
+            return ((A - B)**2).mean()
+        
+        def moving_ave(o, n):
+            return self.alpha*o + (1-self.alpha)*n
+
+        self.scores = [moving_ave(score, mse(out, next_states)) for score, out in zip(self.scores, outs)]
+        for h, score in zip(self.history.values(), self.scores):
+            h.append(score)
+
+    @classmethod
+    def load(cls, pathes, **kwargs):
+        sacs = [MLPSAC.load(path) for path in pathes]
+        return cls(sacs, names = pathes, **kwargs)
+    
+
+
+class MOESACS_TEST:
+    """
+    MLPの予測誤差を重み付けして行動を合成
+    たぶんupdateはそのままでいい
+    bestで選択しているから、そこをいじる？    
+    
+    """
+    def __init__(self, sacs, alpha=0.8, names=None, device=torch.device('cpu')):
+        self.sacs = sacs
+        self.scores = [0 for _ in sacs]
+        self.alpha = alpha
+        self.device = device
+
+        if not names:
+            self.names = [str(i) for i in range(len(sacs))]
+        self.names = names
+    
+        self.history = OrderedDict([(name,[]) for name in names])
+
+    """def exploit(self, states):
+        return self.best.exploit(states)
+
+    @property
+    def best(self):
+        return self.sacs[self.scores.index(min(self.scores))]
+        """
+    #[0,1]を選択している部分？
+
+    """
+    #SACSを取り出す
+    @property
+    def pickup_sac(self):
+        self.sorted_sacs = sorted(self.sacs, key=min(self.scores))
+        return self.sorted_sacs
+    """
+
+
+    #簡単化して、多数のpathが指定されても問題がないmix
+    """
+    def newmix(self, states):
+        #逆数を取る際に、分母に加える定数
+        dig1 = 1
+        dig2 = 0.1
+        dig3 = 0.01
+        dig4 = 0.001
+        dig5 = 0.0001
+        dig=0.00000001
+
+        #逆数をとる、総和を取る
+        inver = [1/(dig4 + score) for score in self.scores]
+        sum_wei = sum(inver)
+
+        #重みを作る
+        wei = [inv/sum_wei for inv in inver]
+
+        exploits = [s.exploit(states) for s in self.sacs]
+
+        np_wei = np.array(wei)
+        np_exploits = np.array(exploits)
+
+        return np.dot(np_wei, np_exploits)
+        """
+    
+    def mix_test(self, states, weight):
+        exploits = [s.exploit(states) for s in self.sacs]
+        
+        np_wei = [weight, 1-weight]
+        np_exploits = np.array(exploits)
+        
+        return np.dot(np_wei, np_exploits)
+
+
+
+
+    def update(self, states, actions, next_states):
+        states = torch.from_numpy(states).float().to(self.device)
+        actions = torch.from_numpy(actions).float().to(self.device)
+        inp = torch.cat((states, actions), dim = 0)
+        outs = [sac.predictor(inp).cpu().detach().numpy() for sac in self.sacs]
+        
+        def mse(A,B):
+            return ((A - B)**2).mean()
+        
+        def moving_ave(o, n):
+            return self.alpha*o + (1-self.alpha)*n
+
+        self.scores = [moving_ave(score, mse(out, next_states)) for score, out in zip(self.scores, outs)]
+        for h, score in zip(self.history.values(), self.scores):
+            h.append(score)
+
+    @classmethod
+    def load(cls, pathes, **kwargs):
+        sacs = [MLPSAC.load(path) for path in pathes]
+        return cls(sacs, names = pathes, **kwargs)
+    
+
+
+
+
+class MOESACS_SCORE:
+
+    def __init__(self, sacs, alpha=0.8, names=None, device=torch.device('cpu')):
+        self.sacs = sacs
+        self.scores = [0 for _ in sacs]
+        self.alpha = alpha
+        self.device = device
+
+        if not names:
+            self.names = [str(i) for i in range(len(sacs))]
+        self.names = names
+    
+        self.history = OrderedDict([(name,[]) for name in names])
+        self.w_history = OrderedDict([(name,[]) for name in names])
+
+    #簡単化して、多数のpathが指定されても問題がないmix
+    def s_newmix(self, states, s_list):
+        #逆数を取る際に、分母に加える定数
+        dig1 = 1
+        dig2 = 0.1
+        dig3 = 0.01
+        dig4 = 0.001
+        dig5 = 0.0001
+        dig=0.00000001
+
+        #逆数をとる、総和を取る
+        inver = [1/(dig4 + abs(score-s)) for score, s in zip(self.scores, s_list)]
+        sum_wei = sum(inver)
+
+        #重みを作る
+        wei = [inv/sum_wei for inv in inver]
+
+        exploits = [s.exploit(states) for s in self.sacs]
+
+        np_wei = np.array(wei)
+        np_exploits = np.array(exploits)
+
+        for h, w in zip(self.w_history.values(), wei):
+            h.append(w)
+
+
+        return np.dot(np_wei, np_exploits)
+
 
     def update(self, states, actions, next_states):
         states = torch.from_numpy(states).float().to(self.device)

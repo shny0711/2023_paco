@@ -1,0 +1,14 @@
+python train_sac.py
+python train_mhlsac.py
+python train_sac.py
+python train_mhlsac.py
+python train_sac.py
+python train_mhlsac.py
+python train_sac.py
+python train_mhlsac.py
+python train_sac.py
+python train_mhlsac.py
+python train_sac.py
+python train_mhlsac.py
+python train_sac.py
+python train_mhlsac.py

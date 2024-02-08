@@ -44,11 +44,12 @@ def main():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--path", nargs="*", required=True)
+    #parser.add_argument("--path", nargs="*", required=True)
+    parser.add_argument("--path", default=['data/MarathonFric1.0-v0/MLPSAC/20231130_165623/best'])
     parser.add_argument("--env", default="MarathonC__H_ML-v0")
     parser.add_argument("--alpha", default=0.8, type=float)
     args = parser.parse_args()
-    wandb.init(entity='gyuta', project='paco_mlpsacs', config=args)
+    wandb.init(entity='kai-shunya', project='paco_mlpsacs', config=args)
 
     sacs = SACS.load(args.path, alpha=args.alpha)
     

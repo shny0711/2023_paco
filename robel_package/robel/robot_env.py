@@ -439,7 +439,7 @@ class RobotEnv(gym.Env, metaclass=abc.ABCMeta):
         space if the observation is a mapping, or a box space otherwise.
         """
         observation = self._get_obs()
-        if isinstance(observation, collections.Mapping):
+        if isinstance(observation, collections.abc.Mapping):
             assert self._use_dict_obs
             return spaces.Dict({
                 key: make_box_space(-np.inf, np.inf, shape=np.shape(value))
@@ -464,7 +464,7 @@ class RobotEnv(gym.Env, metaclass=abc.ABCMeta):
         - List/Tuple: Tuple space
         """
         state = self.get_state()
-        if isinstance(state, collections.Mapping):
+        if isinstance(state, collections.abc.Mapping):
             return spaces.Dict({
                 key: make_box_space(-np.inf, np.inf, shape=np.shape(value))
                 for key, value in state.items()  # pylint: disable=no-member

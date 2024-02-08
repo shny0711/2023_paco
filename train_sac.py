@@ -21,6 +21,8 @@ def train():
             sac.buffer.append(obs, act, reward, fall, n_obs)
             obs = n_obs
 
+            #wandb.log({"retrun":info["return"], "dist": info["obs/root_pos"][1]})
+
             if done:
                 ret = info["return"]
                 pbar.set_postfix(OrderedDict(ret = ret))
@@ -95,29 +97,29 @@ def record(t):
             ])
             obs = n_obs
     env.stop()
-    wandb.log({"t": t, "score": info["obs/root_pos"][1], "record": wandb.Video(videopath, fps=50.0, format="mp4")})
+    wandb.log({"t": t, "retrun":info["return"],"score": info["obs/root_pos"][1], "record": wandb.Video(videopath, fps=50.0, format="mp4")})
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--cls", default="SAC", choices=["SAC", "MLPSAC"])
+    parser.add_argument("--cls", default="MLPSAC", choices=["SAC", "MLPSAC"])
     parser.add_argument("--all-step", default=10**6, type=int)
-    parser.add_argument("--env", default="DKittyWalkFixed-v0")
+    parser.add_argument("--env", default="MarathonFric0.1-v0")
     parser.add_argument("--test-interval", default=10**3, type=int)
     parser.add_argument("--test-num", default=1, type=int)
     parser.add_argument("--record-interval", default=10**4, type=int)
     parser.add_argument("--record-num", default=1, type=int)
     parser.add_argument("--save-num", default=-1, type=int)
-    parser.add_argument("--device", default="cuda", choices=["cuda", "cpu"])
+    parser.add_argument("--device", default="cpu", choices=["cuda", "cpu"])
     parser.add_argument("--alpha", default=0.2, type=float)
     parser.add_argument("--batch-size", default=256, type=int)
     parser.add_argument("--replay-size", default=10**6, type=int)
     parser.add_argument("--start-step", default=10**3, type=int)
     args = parser.parse_args()
-    wandb.init(entity="gyuta", project="paco_sac", config=args)
+    wandb.init(entity="kai-shunya", project="train_sac_data", config=args)
 
     camera_id = None if args.env in ["Pendulum-v0"] else 1
     date = get_strdate()
-    savepath = f"data/{args.env}/{args.cls}/{date}"
+    savepath = f"data/new{args.env}/{args.cls}/{date}"
 
     env = gym.make(args.env)
     env = InfoEnv(env)
